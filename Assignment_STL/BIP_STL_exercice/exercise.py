@@ -85,11 +85,22 @@ class CraneMonitor(object):
         # Exercise 3.2: Write STL formula for swing settling requirement
         # Advanced: After reaching the end position, swing should settle within 0.2s
         # and remain stable for at least 0.15s
-        #self.settling_check = mtl.parse('G(x_end_reached -> F[0, 0.2] (swing_stable & G[0, 0.15] swing_stable))')
+        self.settling_check = mtl.parse('G(x_end_reached -> F[0, 0.2] (swing_stable & G[0, 0.15] swing_stable))')
 
         #---------------------------------------
         # Part 4: Find another property you want to check. Make sure that it is a property that is impossible to achieve
         # Write the filters, property and checker for the property
+        # Self-made check 1: Check that the velocity of the crane is always below 0.4 m/s
+        self.max_velocity = lambda lst: [(t, abs(v) <= 0.4) for (t, v) in lst]
+        self.velocity_check = mtl.parse('G(max_velocity)')
+        
+        # Self-made check 2: Check that the angular velocity of the crane is always below 0.35 rad/s
+        self.max_angular_velocity = lambda lst: [(t, abs(v) <= 0.45) for (t, v) in lst]
+        self.angular_velocity_check = mtl.parse('G(max_angular_velocity)')
+        
+        # Self-made check 3: Check that the acceleration of the crane is always below 9 m/s^2
+        self.max_acceleration = lambda lst: [(t, abs(a) <= 9) for (t, a) in lst]
+        self.acceleration_check = mtl.parse('G(max_acceleration)')
 
     # Example monitoring method
     def check_theta_bounds(self, theta):
@@ -132,16 +143,12 @@ class CraneMonitor(object):
         # Hint: Use the F operator to check if positions are reached in sequence
         # The trajectory should be done within a certain timespan (trajectory_end - trajectory_start ± 0.2)
         # Because the formula is dynamic
-        #traj_end += 0.02
-        #traj_start -= 0.02
-        max_t += 0.2
+        traj_end += 0.2
+        traj_start -= 0.2
         self.transport_sequence = mtl.parse(f'G(traj_start -> F[0, {max_t}] traj_end)')  # Your STL formula here
         data = {}
-        #print(x)
         data['traj_start'] =  self.at_loading(x, traj_start)
-        #print(data['traj_start'])
         data['traj_end'] =  self.at_unloading(x, traj_end)
-        #print(data['traj_end'])
         
         return self.transport_sequence(data, quantitative=False)
         
@@ -159,19 +166,66 @@ class CraneMonitor(object):
         data['swing_stable'] = self.swing_stable(theta)
         return self.settling_check(data, quantitative=False)
 
+    def check_velocity(self, velocity):
+        """
+        Check the velocity of the crane
+        :param velocity: list with pairs of (time, velocity(t))
+        :return: evaluation of the STL formula
+        """
+        data = {}
+        data['max_velocity'] = self.max_velocity(velocity)
+        return self.velocity_check(data, quantitative=False)
+    
+    def check_angular_velocity(self, angular_velocity):
+        """
+        Check the angular velocity of the crane
+        :param angular_velocity: list with pairs of (time, angular velocity(t))
+        :return: evaluation of the STL formula
+        """
+        data = {}
+        data['max_angular_velocity'] = self.max_angular_velocity(angular_velocity)
+        return self.angular_velocity_check(data, quantitative=False)
+    
+    def check_acceleration(self, acceleration):
+        """
+        Check the acceleration of the crane
+        :param acceleration: list with pairs of (time, acceleration(t))
+        :return: evaluation of the STL formula
+        """
+        data = {}
+        data['max_acceleration'] = self.max_acceleration(acceleration)
+        return self.acceleration_check(data, quantitative=False)
+
 
 dbc =DatabaseConnection()
 
 measurements = dbc.get_measurement()
 trajectory = dbc.get_trajectory()
 cm = CraneMonitor()
+# Check 1
 angle_bounds_check =  cm.check_theta_bounds(measurements['angular position'])
 print(f"Angle Bounds: {'✓' if angle_bounds_check else '✗'}")
+
+# Check 2
 bounds_check_x = cm.check_x_bounds(measurements['position'])
 print(f"Position Bounds: {'✓' if bounds_check_x else '✗'}")
-#print(trajectory)
-# from the first element in trajectory to end one
-proper_transport = cm.check_proper_transport_sequence(measurements['position'], trajectory['position'][0][1], trajectory['position'][-1][1], 20) 
+
+# Check 3
+proper_transport = cm.check_proper_transport_sequence(measurements['position'], trajectory['position'][0][1], trajectory['position'][-1][1], trajectory['position'][-1][0]) 
 print(f"Proper Transport Sequence: {'✓' if proper_transport else '✗'}")
-#settling_check = cm.check_settling(measurements['position'], measurements['angular position'])
-#print(f"Settling Check: {'✓' if settling_check else '✗'}")
+
+# Check 4
+settling_check = cm.check_settling(measurements['position'], measurements['angular position'])
+print(f"Settling Check: {'✓' if settling_check else '✗'}")
+
+# Check 5
+velocity_check = cm.check_velocity(measurements['velocity'])
+print(f"Velocity Check: {'✓' if velocity_check else '✗'}")
+
+# Check 6
+angular_velocity_check = cm.check_angular_velocity(measurements['angular velocity'])
+print(f"Angular Velocity Check: {'✓' if angular_velocity_check else '✗'}")
+
+# Check 7
+acceleration_check = cm.check_acceleration(measurements['acceleration'])
+print(f"Acceleration Check: {'✓' if acceleration_check else '✗'}")

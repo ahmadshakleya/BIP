@@ -7,7 +7,7 @@ class DatabaseConnection(object):
 
     def get_measurement(self, traj_id = 140):
         ## retrieve measurement log for the needed quantities
-        measurement_quantities = ["position", "angular position"]
+        measurement_quantities = ["position", "angular position", "velocity", "angular velocity", "acceleration"]
         conn = psycopg.connect("host=127.0.0.1 dbname=gantrycrane user=postgres password=postgres")
         cur = conn.cursor()
         query = "select ts, value, quantity from measurement " \
@@ -32,7 +32,7 @@ class DatabaseConnection(object):
 
     def get_trajectory(self, traj_id = 140):
         ## retrieve measurement log for the needed quantities
-        measurement_quantities = ["position", "angular position"]
+        measurement_quantities = ["position", "angular position", "velocity", "angular velocity", "acceleration", "angular acceleration", "force"]
         conn = psycopg.connect("host=127.0.0.1 dbname=gantrycrane user=postgres password=postgres")
         cur = conn.cursor()
         query = "select ts, value, quantity from trajectory " \
