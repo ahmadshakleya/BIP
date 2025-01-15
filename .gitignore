@@ -1,5 +1,6 @@
 24.11.04.modellingForTwinning.pdf
-TheBigProject/
+TheBigProject/bip-project-services/.git
+TheBigProject/bip-project-services/.venv
 PythonHelper/
 Modelica/
 Blackboard-Structure/
